@@ -110,4 +110,4 @@ def motogp_fpanalyser(filename):
 
 
 if __name__ == "__main__":
-    motogp_fpanalyser("2022-2INA-FP4.pdf")
+    motogp_fpanalyser("data/2022-2INA-FP4.pdf")
