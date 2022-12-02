@@ -1,6 +1,9 @@
 import fitz
 import re
 import pandas as pd
+import streamlit as st
+import altair as alt
+import numpy as np
 
 
 class PdfParser:
@@ -9,7 +12,7 @@ class PdfParser:
     available for use via a Pandas dataframe.
     """
     def __init__(self):
-        self.threshold = 1.03
+        self.threshold = 1000
 
     @staticmethod
     def _min_to_seconds(laptime: str) -> float:
@@ -36,10 +39,10 @@ class PdfParser:
                 text += page.get_text()
 
         riders = re.findall("[A-Z][a-z]+ [A-ZÑ]{2,}", text)
-        data = re.split("[A-Z][a-z]+ [A-ZÑ]{2,}", text)  # text data from each rider
+        data_dict = re.split("[A-Z][a-z]+ [A-ZÑ]{2,}", text)  # text data from each rider
 
         all_lapt = []
-        for rider in data:
+        for rider in data_dict:
             rider_lapt = re.findall("\d'\d\d.\d\d\d", rider)  # all laptimes from each rider
             all_lapt.append(rider_lapt)
 
@@ -80,13 +83,62 @@ class PdfParser:
                 check_dupl.remove(check_dupl[-1])
 
         # put lists into dict and print outputs
-        data = dict(zip(check_dupl, lapt_summary))
+        data_dict = dict(zip(check_dupl, lapt_summary))
 
-        df = pd.DataFrame(data)
+        rider_list = list()
+        all_laps = list()
+
+        for rider in list(data_dict.keys()):
+            laps = data_dict[rider]
+            for lap in laps:
+                rider_list.append(rider)
+                all_laps.append(lap)
+
+        df = pd.DataFrame(list(zip(rider_list, all_laps)))
+        df.columns = ["Riders", "LapTimes"]
 
         return df
 
 
+def analyser(data: pd.DataFrame):
+    """
+    A function that performs analysis on a dataframe with lots of lap times.
+    """
+    # plot laptimes by rider
+    unique_riders = data["Riders"].unique()
+    selected_riders = st.multiselect("Pick riders to compare", unique_riders)
+    st.write("You selected: ", selected_riders)
+
+    rider_laps = data[data["Riders"].isin(selected_riders)]
+    grouped_df = rider_laps.groupby("Riders")
+
+    st.dataframe(rider_laps)
+    rider_laps["LapNumber"] = range(1, len(rider_laps)+1)
+    lap_numbers = np.arange(1, len(rider_laps)+1)
+    st.text(lap_numbers)
+
+    line_chart = alt.Chart(
+        rider_laps, title="Rider lap times").mark_line(point=True).encode(
+        x=alt.X('LapNumber:Q'),
+        y=alt.Y(
+            'LapTimes:Q',
+            title=f"Lap times (seconds) - lower is better"
+        )
+    ).interactive()
+    st.altair_chart(line_chart)
+
+    # display the dataframe
+    show_raw_data = st.checkbox(label="Show lap time data")
+    if show_raw_data:
+        st.dataframe(data)
+
+
 if __name__ == "__main__":
     parser = PdfParser()
-    dframe = parser.parse_pdf("../data/2022-2INA-FP4.pdf")
+
+    session = st.file_uploader("Session file", type=["pdf"])
+    if session:
+        dframe = parser.parse_pdf(session)
+    else:
+        dframe = parser.parse_pdf("2022-1QAT-FP4.pdf")
+    analyser(dframe)
