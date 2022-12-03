@@ -54,3 +54,10 @@ watchdog              2.1.9
 wget                  3.2
 wheel                 0.37.1
 zipp                  3.11.0
+
+pandas~=1.5.2
+streamlit~=1.15.2
+altair~=4.2.0
+numpy~=1.23.5
+wget~=3.2
+PyMuPDF~=1.21.0
