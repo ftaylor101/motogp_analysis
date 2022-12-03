@@ -4,6 +4,41 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 import numpy as np
+import os
+import wget
+
+
+class PdfRetriever:
+    """
+    This class is for retrieving the MotoGP PDFs.
+    """
+    def __init__(self):
+        self.year = None
+        self.race = None
+        self.session = None
+
+    def retrieve_file(self, year: str, race: str, session: str) -> str:
+        """
+        Gets the PDF from the website.
+
+        :param year:
+        :param race:
+        :param session:
+        :return: The pdf name saved locally
+        """
+        self.year = year
+        self.race = race
+        self.session = session
+        url = f"https://resources.motogp.com/files/results/{self.year}/{self.race}/MotoGP/{self.session}/Analysis.pdf"
+        name = f"{year}_{race}_{session}.pdf"
+
+        if os.path.isfile(name):
+            st.write("File exists locally")
+            file_name = name
+        else:
+            st.write("Downloading PDF...")
+            file_name = wget.download(url, name)
+        return file_name
 
 
 class PdfParser:
@@ -33,7 +68,7 @@ class PdfParser:
 
         :return: a dataframe
         """
-        with fitz.open(file) as doc:
+        with fitz.Document(file) as doc:
             text = ""
             for page in doc:
                 text += page.get_text()
@@ -113,8 +148,8 @@ def analyser(data: pd.DataFrame):
     grouped_df = rider_laps.groupby("Riders")
 
     st.dataframe(rider_laps)
-    rider_laps["LapNumber"] = range(1, len(rider_laps)+1)
-    lap_numbers = np.arange(1, len(rider_laps)+1)
+    rider_laps["LapNumber"] = range(1, len(rider_laps) + 1)
+    lap_numbers = np.arange(1, len(rider_laps) + 1)
     st.text(lap_numbers)
 
     line_chart = alt.Chart(
@@ -135,10 +170,27 @@ def analyser(data: pd.DataFrame):
 
 if __name__ == "__main__":
     parser = PdfParser()
+    pdfs = PdfRetriever()
 
-    session = st.file_uploader("Session file", type=["pdf"])
-    if session:
-        dframe = parser.parse_pdf(session)
+    races = [
+        "QAT", "INA", "ARG", "AME", "POR", "SPA", "FRA", "ITA", "CAT", "GER", "NED", "GBR", "AUT", "RSM", "ARA", "JPN",
+        "THA", "AUS", "MAL", "VAL"
+    ]
+    with st.form('my_form'):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            year = st.selectbox("Select year", range(2010, 2023))
+        with col2:
+            race = st.selectbox("Select race", races)
+        with col3:
+            session = st.selectbox("Select session", ["FP1", "FP2", "FP3", "FP4"])
+        submit = st.form_submit_button("Get session")
+
+    fname = pdfs.retrieve_file(year, race, session)
+
+    session_file = st.file_uploader("Session file", type=["pdf"])
+    if session_file:
+        dframe = parser.parse_pdf(session_file)
     else:
-        dframe = parser.parse_pdf("2022-1QAT-FP4.pdf")
+        dframe = parser.parse_pdf(fname)
     analyser(dframe)
