@@ -10,6 +10,7 @@ class Analyser:
     """
     def __init__(self):
         self.__data = None
+        self.status = None
 
     @property
     def data(self):
@@ -22,10 +23,15 @@ class Analyser:
 
         :param value: The data to be analysed as a DataFrame.
         """
-        assert type(value) == pd.DataFrame, f"Expected type DataFrame, was given {type(value)}"
-        assert "Rider" in value.columns, "Expected a column named 'Rider'"
-        assert "LapTimes" in value.columns, "Expected a column named 'LapTimes'"
-        self.__data = value
+        if not value.empty:
+            assert type(value) == pd.DataFrame, f"Expected type DataFrame, was given {type(value)}"
+            assert "Riders" in value.columns, "Expected a column named 'Rider'"
+            assert "LapTimes" in value.columns, "Expected a column named 'LapTimes'"
+            self.__data = value
+            print("All is good")
+            self.status = "Good"
+        else:
+            self.status = "Bad. DF was empty or had incorrect column names."
 
     def unique_riders(self):
         """
